@@ -51,7 +51,8 @@ classdef MatType < handle
 
         function KeyPress(obj, handle, event)
             c = event.Character;
-            if ~isempty(c) && c >= ' ' && c <= '~'
+            if ~isempty(c) && c >= ' ' && c <= '~' && ...
+               obj.CursorIdx < length(obj.TypingCharacters)
                 typingCharacter = obj.TypingCharacters(obj.CursorIdx);
                 typingCharacter.String = c;
                 templateCharacter = obj.TemplateCharacters(obj.CursorIdx);
@@ -74,6 +75,7 @@ classdef MatType < handle
             figSize = obj.Figure.Position(3:4);
             xPos = obj.XMargin;
             yPos = figSize(2) - obj.YMargin - obj.CharHeight;
+            text = [text ' '];
             for idx=1:length(text)
                 TemplateCharacter = uicontrol('style', 'text');
                 TemplateCharacter.Position = ...
@@ -90,7 +92,7 @@ classdef MatType < handle
                 TypingCharacter.FontName = 'FixedWidth';
                 TypingCharacter.FontUnits = 'pixels';
                 TypingCharacter.FontSize = obj.CharHeight;
-                TypingCharacter.String = 'X';
+                TypingCharacter.String = ' ';
                 TypingCharacter.BackgroundColor = [1 1 1];
                 obj.TypingCharacters = [obj.TypingCharacters TypingCharacter];
 
