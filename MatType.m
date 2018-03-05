@@ -75,34 +75,53 @@ classdef MatType < handle
             figSize = obj.Figure.Position(3:4);
             xPos = obj.XMargin;
             yPos = figSize(2) - obj.YMargin - obj.CharHeight;
-            text = [text ' '];
-            for idx=1:length(text)
-                TemplateCharacter = uicontrol('style', 'text');
-                TemplateCharacter.Position = ...
-                    [xPos, yPos, obj.CharWidth, obj.CharHeight+2];
-                TemplateCharacter.FontName = 'FixedWidth';
-                TemplateCharacter.FontUnits = 'pixels';
-                TemplateCharacter.FontSize = obj.CharHeight;
-                TemplateCharacter.String = text(idx);
-                obj.TemplateCharacters(idx) = TemplateCharacter;
+            lineWidth = floor((figSize(1)-2*obj.XMargin) / (obj.CharWidth+1));
+            lines = obj.LineBreak(text, lineWidth);
+            idx = 1;
+            for row=1:length(lines)
+                line = lines{row};
+                for col=1:length(line)
+                    TemplateCharacter = uicontrol('style', 'text');
+                    TemplateCharacter.Position = ...
+                        [xPos, yPos, obj.CharWidth, obj.CharHeight+2];
+                    TemplateCharacter.FontName = 'FixedWidth';
+                    TemplateCharacter.FontUnits = 'pixels';
+                    TemplateCharacter.FontSize = obj.CharHeight;
+                    TemplateCharacter.String = line(col);
+                    obj.TemplateCharacters(idx) = TemplateCharacter;
 
-                TypingCharacter = uicontrol('style', 'text');
-                TypingCharacter.Position = ...
-                    [xPos, yPos-figSize(2)/2, obj.CharWidth, obj.CharHeight+2];
-                TypingCharacter.FontName = 'FixedWidth';
-                TypingCharacter.FontUnits = 'pixels';
-                TypingCharacter.FontSize = obj.CharHeight;
-                TypingCharacter.String = ' ';
-                TypingCharacter.BackgroundColor = [1 1 1];
-                obj.TypingCharacters(idx) = TypingCharacter;
-
-                if (xPos + obj.CharWidth + 1) > (figSize(1) - obj.XMargin)
-                    xPos = obj.XMargin;
-                    yPos = yPos - obj.CharHeight - 2;
-                else
+                    TypingCharacter = uicontrol('style', 'text');
+                    TypingCharacter.Position = ...
+                        [xPos, yPos-figSize(2)/2, obj.CharWidth, obj.CharHeight+2];
+                    TypingCharacter.FontName = 'FixedWidth';
+                    TypingCharacter.FontUnits = 'pixels';
+                    TypingCharacter.FontSize = obj.CharHeight;
+                    TypingCharacter.String = ' ';
+                    TypingCharacter.BackgroundColor = [1 1 1];
+                    obj.TypingCharacters(idx) = TypingCharacter;
                     xPos = xPos + obj.CharWidth + 1;
+                    idx = idx + 1;
+                end
+                xPos = obj.XMargin;
+                yPos = yPos - obj.CharHeight - 2;
+            end
+        end
+
+        function lines = LineBreak(obj, text, maxLineLength)
+            words = strsplit(text);
+            lines = {};
+            line = '';
+            for idx=1:length(words)
+                if length(line) == 0
+                    line = words{idx};
+                elseif length(line) + length(words{idx}) < maxLineLength
+                    line = [line ' ' words{idx}];
+                else
+                    lines = [lines [line ' ']];
+                    line = words{idx};
                 end
             end
+            lines = [lines line];
         end
 
         function DrawCursor(obj, handle, event)
