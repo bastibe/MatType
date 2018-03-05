@@ -1,8 +1,8 @@
 classdef MatType < handle
     properties
         Figure
-        TemplateCharacters
-        TypingCharacters
+        TemplateCharacters = matlab.ui.control.UIControl
+        TypingCharacters = matlab.ui.control.UIControl
         TypingBackground
         CursorTimer
         TrueCursorIdx = 1
@@ -22,7 +22,7 @@ classdef MatType < handle
             obj.Figure.MenuBar = 'none';
             obj.Figure.ToolBar = 'none';
             obj.Figure.Resize = 'off';
-            obj.Figure.Name = 'MatType';
+            obj.Figure.Name = 'MatType - Typing Tutor';
             obj.Figure.NumberTitle = 'off';
             obj.Figure.WindowKeyPressFcn = @obj.KeyPress;
             figsize = obj.Figure.Position(3:4);
@@ -34,9 +34,9 @@ classdef MatType < handle
             obj.TypingBackground.BackgroundColor = [1 1 1];
 
             if ~exist('defaultText') || isempty(defaultText)
-                templateText = 'lorem ipsum dolor sit amet';
+                templateText = obj.DefaultText();
             else
-                templateText = defaultText;
+                templateText = text;
             end
             obj.CreateCharacters(templateText);
 
@@ -84,7 +84,7 @@ classdef MatType < handle
                 TemplateCharacter.FontUnits = 'pixels';
                 TemplateCharacter.FontSize = obj.CharHeight;
                 TemplateCharacter.String = text(idx);
-                obj.TemplateCharacters = [obj.TemplateCharacters TemplateCharacter];
+                obj.TemplateCharacters(idx) = TemplateCharacter;
 
                 TypingCharacter = uicontrol('style', 'text');
                 TypingCharacter.Position = ...
@@ -94,11 +94,11 @@ classdef MatType < handle
                 TypingCharacter.FontSize = obj.CharHeight;
                 TypingCharacter.String = ' ';
                 TypingCharacter.BackgroundColor = [1 1 1];
-                obj.TypingCharacters = [obj.TypingCharacters TypingCharacter];
+                obj.TypingCharacters(idx) = TypingCharacter;
 
                 if (xPos + obj.CharWidth + 1) > (figSize(1) - obj.XMargin)
                     xPos = obj.XMargin;
-                    yPos = yPos - obj.CharHeight + 2;
+                    yPos = yPos - obj.CharHeight - 2;
                 else
                     xPos = xPos + obj.CharWidth + 1;
                 end
@@ -138,6 +138,10 @@ classdef MatType < handle
             oldCharacter.BackgroundColor = originalBackgroundColor;
             oldCharacter.ForegroundColor = originalForegroundColor;
             obj.TrueCursorIdx = newCursorIdx;
+        end
+
+        function text = DefaultText(obj)
+            text = 'Einst stritten sich Nordwind und Sonne, wer von ihnen beiden wohl der Stärkere wäre, als ein Wanderer, der in einen warmen Mantel gehüllt war, des Weges daherkam. Sie wurden einig, daß derjenige für den Stärkeren gelten sollte, der den Wanderer zwingen würde, seinen Mantel abzunehmen. Der Nordwind blies mit aller Macht, aber je mehr er blies, desto fester hüllte sich der Wanderer in seinen Mantel ein. Endlich gab der Nordwind den Kampf auf. Nun erwärmte die Sonne die Luft mit ihren freundlichen Strahlen, und schon nach wenigen Augenblicken zog der Wanderer seinen Mantel aus. Da mußte der Nordwind zugeben, daß die Sonne von ihnen beiden der Stärkere war.';
         end
     end
 end
