@@ -3,6 +3,7 @@ classdef MatType < handle
         Figure
         TemplateCharacters
         TypingCharacters
+        TypingBackground
         CursorTimer
         TrueCursorIdx = 1
         XMargin = 10
@@ -24,6 +25,13 @@ classdef MatType < handle
             obj.Figure.Name = 'MatType';
             obj.Figure.NumberTitle = 'off';
             obj.Figure.WindowKeyPressFcn = @obj.KeyPress;
+            figsize = obj.Figure.Position(3:4);
+
+            obj.TypingBackground = uicontrol('style', 'text');
+            obj.TypingBackground.Position = ...
+                [obj.XMargin obj.YMargin ...
+                 figsize(1)-2*obj.XMargin, figsize(2)/2-2*obj.YMargin];
+            obj.TypingBackground.BackgroundColor = [1 1 1];
 
             if ~exist('defaultText') || isempty(defaultText)
                 templateText = 'lorem ipsum dolor sit amet';
@@ -48,9 +56,9 @@ classdef MatType < handle
                 typingCharacter.String = c;
                 templateCharacter = obj.TemplateCharacters(obj.CursorIdx);
                 if templateCharacter.String == typingCharacter.String
-                    templateCharacter.ForegroundColor = [0 1 0];
+                    templateCharacter.ForegroundColor = [0 0.6 0]; % green
                 else
-                    templateCharacter.ForegroundColor = [1 0 0];
+                    templateCharacter.ForegroundColor = [0.6 0 0]; % red
                 end
                 obj.CursorIdx = obj.CursorIdx + 1;
             elseif strcmp(event.Key, 'backspace') && obj.CursorIdx > 1
@@ -67,23 +75,24 @@ classdef MatType < handle
             xPos = obj.XMargin;
             yPos = figSize(2) - obj.YMargin - obj.CharHeight;
             for idx=1:length(text)
-                character = uicontrol('style', 'text');
-                character.Position = ...
+                TemplateCharacter = uicontrol('style', 'text');
+                TemplateCharacter.Position = ...
                     [xPos, yPos, obj.CharWidth, obj.CharHeight+2];
-                character.FontName = 'FixedWidth';
-                character.FontUnits = 'pixels';
-                character.FontSize = obj.CharHeight;
-                character.String = text(idx);
-                obj.TemplateCharacters = [obj.TemplateCharacters character];
+                TemplateCharacter.FontName = 'FixedWidth';
+                TemplateCharacter.FontUnits = 'pixels';
+                TemplateCharacter.FontSize = obj.CharHeight;
+                TemplateCharacter.String = text(idx);
+                obj.TemplateCharacters = [obj.TemplateCharacters TemplateCharacter];
 
-                character = uicontrol('style', 'text');
-                character.Position = ...
+                TypingCharacter = uicontrol('style', 'text');
+                TypingCharacter.Position = ...
                     [xPos, yPos-figSize(2)/2, obj.CharWidth, obj.CharHeight+2];
-                character.FontName = 'FixedWidth';
-                character.FontUnits = 'pixels';
-                character.FontSize = obj.CharHeight;
-                character.String = 'X';
-                obj.TypingCharacters = [obj.TypingCharacters character];
+                TypingCharacter.FontName = 'FixedWidth';
+                TypingCharacter.FontUnits = 'pixels';
+                TypingCharacter.FontSize = obj.CharHeight;
+                TypingCharacter.String = 'X';
+                TypingCharacter.BackgroundColor = [1 1 1];
+                obj.TypingCharacters = [obj.TypingCharacters TypingCharacter];
 
                 if (xPos + obj.CharWidth + 1) > (figSize(1) - obj.XMargin)
                     xPos = obj.XMargin;
@@ -96,11 +105,11 @@ classdef MatType < handle
 
         function DrawCursor(obj, handle, event)
             character = obj.TypingCharacters(obj.CursorIdx);
-            if character.BackgroundColor == obj.Figure.Color
+            if character.BackgroundColor == [1 1 1]
                 character.BackgroundColor = [0 0 0];
                 character.ForegroundColor = [1 1 1];
             else
-                character.BackgroundColor = obj.Figure.Color;
+                character.BackgroundColor = [1 1 1];
                 character.ForegroundColor = [0 0 0];
             end
         end
