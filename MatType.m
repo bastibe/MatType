@@ -18,6 +18,12 @@ classdef MatType < handle
 
     methods
         function obj = MatType(defaultText)
+            % Force Matlab to use UTF-8 if possible
+            if exist('slCharacterEncoding') && ...
+               ~strcmp(feature('DefaultCharacterSet'), 'UTF-8')
+                slCharacterEncoding('UTF8');
+            end
+
             obj.Figure = figure();
             obj.Figure.MenuBar = 'none';
             obj.Figure.ToolBar = 'none';
@@ -30,7 +36,7 @@ classdef MatType < handle
             obj.TypingBackground = uicontrol('style', 'text');
             obj.TypingBackground.Position = ...
                 [obj.XMargin obj.YMargin ...
-                 figsize(1)-2*obj.XMargin, figsize(2)/2-2*obj.YMargin];
+                 figsize(1)-2*obj.XMargin, figsize(2)/2-2*obj.YMargin+2];
             obj.TypingBackground.BackgroundColor = [1 1 1];
 
             if ~exist('defaultText') || isempty(defaultText)
