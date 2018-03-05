@@ -50,9 +50,8 @@ classdef MatType < handle
         end
 
         function KeyPress(obj, handle, event)
-            c = event.Character;
-            if ~isempty(c) && c >= ' ' && c <= '~' && ...
-               obj.CursorIdx < length(obj.TypingCharacters)
+            c = obj.Character2letter(event.Character);
+            if c && obj.CursorIdx < length(obj.TypingCharacters)
                 typingCharacter = obj.TypingCharacters(obj.CursorIdx);
                 typingCharacter.String = c;
                 templateCharacter = obj.TemplateCharacters(obj.CursorIdx);
@@ -68,6 +67,31 @@ classdef MatType < handle
                 templateCharacter.ForegroundColor = [0 0 0];
                 typingCharacter = obj.TypingCharacters(obj.CursorIdx);
                 typingCharacter.String = ' ';
+            end
+        end
+
+        function letter = Character2letter(obj, c)
+            % fixes German special characters
+            if isempty(c)
+                letter = false;
+            elseif c >= ' ' && c <= '~'
+                letter = c;
+            elseif c == 65508
+                letter = 'ä';
+            elseif c == 65526
+                letter = 'ö';
+            elseif c == 65532
+                letter = 'ü';
+            elseif c == 65503
+                letter = 'ß';
+            elseif c == 65476
+                letter = 'Ä';
+            elseif c == 65494
+                letter = 'Ö';
+            elseif c == 65500
+                letter = 'Ü';
+            else
+                letter = false;
             end
         end
 
