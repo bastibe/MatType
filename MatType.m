@@ -10,6 +10,11 @@ classdef MatType < handle
         YMargin = 10
         CharWidth = 7
         CharHeight = 12
+        AnnouncementPanel
+        TimeoutTimer
+        TimeoutPanel
+        TimeoutStart
+        TimeoutLength = 10
     end
 
     properties (Dependent)
@@ -52,12 +57,36 @@ classdef MatType < handle
             obj.CursorTimer.Period = 0.5;
             obj.CursorTimer.TimerFcn = @obj.DrawCursor;
             start(obj.CursorTimer);
-            obj.Figure.DeleteFcn = @obj.DeleteCursorTimer;
+            obj.Figure.DeleteFcn = @obj.DeleteTimers;
+
+            obj.AnnouncementPanel = uicontrol('style', 'text');
+            obj.AnnouncementPanel.Position = ...
+                [figsize(1)/2-100 figsize(2)/4-25 200 50];
+            obj.AnnouncementPanel.String = 'Start Typing';
+            obj.AnnouncementPanel.FontSize = 36;
+            obj.AnnouncementPanel.ForegroundColor = [1 0 0];
+            obj.AnnouncementPanel.BackgroundColor = [1 1 1];
+
+            obj.TimeoutPanel = uicontrol('style', 'text');
+            obj.TimeoutPanel.Position = ...
+                [figsize(1)/2-50 figsize(2)/2+5 100, 16];
+            obj.TimeoutPanel.String = obj.TimeoutString(obj.TimeoutLength);
+            obj.TimeoutPanel.FontSize = 14;
+            obj.TimeoutTimer = timer();
+            obj.TimeoutTimer.ExecutionMode = 'FixedRate';
+            obj.TimeoutTimer.Period = 0.1;
+            obj.TimeoutTimer.TimerFcn = @obj.DrawTimeout;
         end
 
         function KeyPress(obj, handle, event)
             c = obj.Character2letter(event.Character);
             if c && obj.CursorIdx < length(obj.TypingCharacters)
+                if strcmp(obj.AnnouncementPanel.Visible, 'on') && ...
+                   strcmp(obj.AnnouncementPanel.String, 'Start Typing')
+                    obj.AnnouncementPanel.Visible = 'off';
+                    obj.TimeoutStart = tic();
+                    start(obj.TimeoutTimer);
+                end
                 typingCharacter = obj.TypingCharacters(obj.CursorIdx);
                 typingCharacter.String = c;
                 templateCharacter = obj.TemplateCharacters(obj.CursorIdx);
@@ -165,9 +194,61 @@ classdef MatType < handle
             end
         end
 
-        function DeleteCursorTimer(obj, handle, event)
+        function DrawTimeout(obj, handle, event)
+            remaining = obj.TimeoutLength - toc(obj.TimeoutStart);
+            if remaining < 0
+                stop(obj.TimeoutTimer);
+                obj.TimeoutPanel.String = obj.TimeoutString(0);
+                obj.DrawScore();
+            end
+            obj.TimeoutPanel.String = obj.TimeoutString(remaining);
+        end
+
+        function str = TimeoutString(obj, remaining)
+            if remaining < 0
+                remaining = 0;
+            end
+            minutes = floor(remaining / 60);
+            seconds = remaining - minutes*60;
+            str = sprintf('%i:%04.1f s', minutes, seconds);
+        end
+
+        function DrawScore(obj)
+            templateString = '';
+            for character=obj.TemplateCharacters
+                templateString = [templateString character.String];
+            end
+            typedString = '';
+            for character=obj.TypingCharacters
+                typedString = [typedString character.String];
+            end
+            correctWords = 0;
+            wordCorrect = true;
+            for idx=1:length(typedString)
+                if templateString(idx) == ' '
+                    if wordCorrect
+                        correctWords = correctWords + 1;
+                    end
+                    wordCorrect = true;
+                end
+                wordCorrect = wordCorrect && ...
+                              templateString(idx) == typedString(idx);
+            end
+            if wordCorrect
+                correctWords = correctWords + 1;
+            end
+            correctWords
+
+            obj.AnnouncementPanel.String = ...
+                sprintf('%3.2f WPM', correctWords/(obj.TimeoutLength/60));
+            obj.AnnouncementPanel.Visible = 'on';
+        end
+
+        function DeleteTimers(obj, handle, event)
             stop(obj.CursorTimer);
             delete(obj.CursorTimer);
+            stop(obj.TimeoutTimer);
+            delete(obj.TimeoutTimer);
         end
 
         function value = get.CursorIdx(obj)
