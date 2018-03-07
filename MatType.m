@@ -1,5 +1,11 @@
 classdef MatType < handle
     % MatType tests your typing speed
+    %
+    % MatType will show you a text, and ask you to type it out for one
+    % minute. After one minute, it will count how many words you typed
+    % correctly, and display your words per minute.
+    %
+    % You can supply your own text with MatType(text).
 
     properties
         % UI components:
