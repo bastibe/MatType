@@ -3,15 +3,17 @@ classdef MatType < handle
 
     properties
         % UI components:
-        Figure = matlab.ui.Figure
+        Figure
+        TypingBackground
+        AnnouncementPanel
+        CountdownPanel
+        % These need the type information to force them to be object
+        % arrays instead of double arrays:
         TemplateCharacters = matlab.ui.control.UIControl
         TypingCharacters = matlab.ui.control.UIControl
-        TypingBackground = matlab.ui.control.UIControl
-        AnnouncementPanel = matlab.ui.control.UIControl
-        CountdownPanel = matlab.ui.control.UIControl
         % Timers:
-        CursorTimer = timer    % Blinks the cursor
-        CountdownTimer = timer % Updates the countdown
+        CursorTimer            % Blinks the cursor
+        CountdownTimer         % Updates the countdown
         % Layout:
         XMargin = 10           % Left and right margin
         YMargin = 10           % Top and bottom margin
@@ -43,6 +45,7 @@ classdef MatType < handle
             end
 
             % Set up window:
+            obj.Figure = figure();
             obj.Figure.MenuBar = 'none';
             obj.Figure.ToolBar = 'none';
             obj.Figure.Resize = 'off';
@@ -68,6 +71,7 @@ classdef MatType < handle
 
             % Set up blinking cursor:
             obj.CursorIdx = 1;
+            obj.CursorTimer = timer();
             obj.CursorTimer.ExecutionMode = 'FixedRate';
             obj.CursorTimer.Period = 0.5;
             obj.CursorTimer.TimerFcn = @obj.CursorCallback;
@@ -91,6 +95,7 @@ classdef MatType < handle
             obj.CountdownPanel.FontSize = 14;
 
             % Set up countdown timer:
+            obj.CountdownTimer = timer();
             obj.CountdownTimer.ExecutionMode = 'FixedRate';
             obj.CountdownTimer.Period = 0.1;
             obj.CountdownTimer.TimerFcn = @obj.CountdownCallback;
