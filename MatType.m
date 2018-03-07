@@ -1,49 +1,64 @@
 classdef MatType < handle
+    % MatType tests your typing speed
+
     properties
-        Figure
+        % UI components:
+        Figure = matlab.ui.Figure
         TemplateCharacters = matlab.ui.control.UIControl
         TypingCharacters = matlab.ui.control.UIControl
-        TypingBackground
-        CursorTimer
-        TrueCursorIdx = 1
-        XMargin = 10
-        YMargin = 10
-        CharWidth = 7
-        CharHeight = 12
-        AnnouncementPanel
-        TimeoutTimer
-        TimeoutPanel
-        TimeoutStart = 0
-        TimeoutLength = 60
+        TypingBackground = matlab.ui.control.UIControl
+        AnnouncementPanel = matlab.ui.control.UIControl
+        CountdownPanel = matlab.ui.control.UIControl
+        % Timers:
+        CursorTimer = timer    % Blinks the cursor
+        CountdownTimer = timer % Updates the countdown
+        % Layout:
+        XMargin = 10           % Left and right margin
+        YMargin = 10           % Top and bottom margin
+        CharWidth = 7          % Width of a single char
+        CharPadding = 1        % Padding between chars
+        LineHeight = 12        % Height of each line
+        LinePadding = 2        % Padding between lines
+        % Countdown:
+        CountdownStart = 0     % Countdown start time
+        CountdownLength = 60   % Length of countdown in s
     end
 
     properties (Dependent)
-        CursorIdx
+        CursorIdx              % Current cursor position
+    end
+
+    properties (Hidden)
+        TrueCursorIdx = 1      % Backend store for CursorIdx
     end
 
     methods
         function obj = MatType(defaultText)
+            % Set up GUI and timers
+
             % Force Matlab to use UTF-8 if possible
             if exist('slCharacterEncoding') && ...
                ~strcmp(feature('DefaultCharacterSet'), 'UTF-8')
                 slCharacterEncoding('UTF8');
             end
 
-            obj.Figure = figure();
+            % Set up window:
             obj.Figure.MenuBar = 'none';
             obj.Figure.ToolBar = 'none';
             obj.Figure.Resize = 'off';
             obj.Figure.Name = 'MatType - Typing Tutor';
             obj.Figure.NumberTitle = 'off';
-            obj.Figure.WindowKeyPressFcn = @obj.KeyPress;
+            obj.Figure.WindowKeyPressFcn = @obj.KeyPressCallback;
             figsize = obj.Figure.Position(3:4);
 
+            % Set up a white background for the typing area:
             obj.TypingBackground = uicontrol('style', 'text');
             obj.TypingBackground.Position = ...
                 [obj.XMargin obj.YMargin ...
                  figsize(1)-2*obj.XMargin, figsize(2)/2-2*obj.YMargin+2];
             obj.TypingBackground.BackgroundColor = [1 1 1];
 
+            % Set up template text:
             if ~exist('defaultText') || isempty(defaultText)
                 templateText = obj.DefaultText();
             else
@@ -51,14 +66,15 @@ classdef MatType < handle
             end
             obj.CreateCharacters(templateText);
 
+            % Set up blinking cursor:
             obj.CursorIdx = 1;
-            obj.CursorTimer = timer();
             obj.CursorTimer.ExecutionMode = 'FixedRate';
             obj.CursorTimer.Period = 0.5;
-            obj.CursorTimer.TimerFcn = @obj.DrawCursor;
+            obj.CursorTimer.TimerFcn = @obj.CursorCallback;
             start(obj.CursorTimer);
             obj.Figure.DeleteFcn = @obj.DeleteTimers;
 
+            % Set up message area:
             obj.AnnouncementPanel = uicontrol('style', 'text');
             obj.AnnouncementPanel.Position = ...
                 [figsize(1)/2-100 figsize(2)/4-25 200 50];
@@ -67,30 +83,36 @@ classdef MatType < handle
             obj.AnnouncementPanel.ForegroundColor = [1 0 0];
             obj.AnnouncementPanel.BackgroundColor = [1 1 1];
 
-            obj.TimeoutPanel = uicontrol('style', 'text');
-            obj.TimeoutPanel.Position = ...
+            % Set up countdown area:
+            obj.CountdownPanel = uicontrol('style', 'text');
+            obj.CountdownPanel.Position = ...
                 [figsize(1)/2-50 figsize(2)/2+5 100, 16];
-            obj.TimeoutPanel.String = obj.TimeoutString(obj.TimeoutLength);
-            obj.TimeoutPanel.FontSize = 14;
-            obj.TimeoutTimer = timer();
-            obj.TimeoutTimer.ExecutionMode = 'FixedRate';
-            obj.TimeoutTimer.Period = 0.1;
-            obj.TimeoutTimer.TimerFcn = @obj.DrawTimeout;
+            obj.CountdownPanel.String = obj.FormatCountdown(obj.CountdownLength);
+            obj.CountdownPanel.FontSize = 14;
+
+            % Set up countdown timer:
+            obj.CountdownTimer.ExecutionMode = 'FixedRate';
+            obj.CountdownTimer.Period = 0.1;
+            obj.CountdownTimer.TimerFcn = @obj.CountdownCallback;
         end
 
-        function KeyPress(obj, handle, event)
-            c = obj.Character2letter(event.Character);
-            if obj.TimeoutStart == -1
+        function KeyPressCallback(obj, handle, event)
+            % Type letter when keyboard key was pressed
+
+            % Don't type after countdown finished:
+            if obj.CountdownStart == -1
                 return
             end
-            if c && obj.CursorIdx < length(obj.TypingCharacters)
-                if obj.TimeoutStart == 0
+
+            letter = obj.Character2letter(event.Character);
+            if letter && obj.CursorIdx < length(obj.TypingCharacters)
+                if obj.CountdownStart == 0
                     obj.StartTyping();
                 end
-                typingCharacter = obj.TypingCharacters(obj.CursorIdx);
-                typingCharacter.String = c;
+                currentCharacter = obj.TypingCharacters(obj.CursorIdx);
+                currentCharacter.String = letter;
                 templateCharacter = obj.TemplateCharacters(obj.CursorIdx);
-                if templateCharacter.String == typingCharacter.String
+                if templateCharacter.String == currentCharacter.String
                     templateCharacter.ForegroundColor = [0 0.6 0]; % green
                 else
                     templateCharacter.ForegroundColor = [0.6 0 0]; % red
@@ -100,13 +122,13 @@ classdef MatType < handle
                 obj.CursorIdx = obj.CursorIdx - 1;
                 templateCharacter = obj.TemplateCharacters(obj.CursorIdx);
                 templateCharacter.ForegroundColor = [0 0 0];
-                typingCharacter = obj.TypingCharacters(obj.CursorIdx);
-                typingCharacter.String = ' ';
+                currentCharacter = obj.TypingCharacters(obj.CursorIdx);
+                currentCharacter.String = ' ';
             end
         end
 
         function letter = Character2letter(obj, c)
-            % fixes German special characters
+            % Fix German special characters (Matlab bug)
             if isempty(c)
                 letter = false;
             elseif c >= ' ' && c <= '~'
@@ -131,10 +153,18 @@ classdef MatType < handle
         end
 
         function CreateCharacters(obj, text)
+            % Set up template and typing text areas
+
+            % Both text areas are made of one `text` uicontrol per
+            % character. This is the only way of controlling the color
+            % of each individual character, and making sure that the
+            % layout of template area and typing area is exactly the
+            % same.
             figSize = obj.Figure.Position(3:4);
             xPos = obj.XMargin;
-            yPos = figSize(2) - obj.YMargin - obj.CharHeight;
-            lineWidth = floor((figSize(1)-2*obj.XMargin) / (obj.CharWidth+1));
+            yPos = figSize(2) - obj.YMargin - obj.LineHeight;
+            lineWidth = floor((figSize(1)-2*obj.XMargin) / ...
+                              (obj.CharWidth+obj.CharPadding));
             lines = obj.LineBreak(text, lineWidth);
             idx = 1;
             for row=1:length(lines)
@@ -142,31 +172,35 @@ classdef MatType < handle
                 for col=1:length(line)
                     TemplateCharacter = uicontrol('style', 'text');
                     TemplateCharacter.Position = ...
-                        [xPos, yPos, obj.CharWidth, obj.CharHeight+2];
+                        [xPos, yPos, ...
+                         obj.CharWidth, obj.LineHeight+obj.LinePadding];
                     TemplateCharacter.FontName = 'FixedWidth';
                     TemplateCharacter.FontUnits = 'pixels';
-                    TemplateCharacter.FontSize = obj.CharHeight;
+                    TemplateCharacter.FontSize = obj.LineHeight;
                     TemplateCharacter.String = line(col);
                     obj.TemplateCharacters(idx) = TemplateCharacter;
 
                     TypingCharacter = uicontrol('style', 'text');
                     TypingCharacter.Position = ...
-                        [xPos, yPos-figSize(2)/2, obj.CharWidth, obj.CharHeight+2];
+                        [xPos, yPos-figSize(2)/2, ...
+                         obj.CharWidth, obj.LineHeight+obj.LinePadding];
                     TypingCharacter.FontName = 'FixedWidth';
                     TypingCharacter.FontUnits = 'pixels';
-                    TypingCharacter.FontSize = obj.CharHeight;
+                    TypingCharacter.FontSize = obj.LineHeight;
                     TypingCharacter.String = ' ';
-                    TypingCharacter.BackgroundColor = [1 1 1];
+                    TypingCharacter.BackgroundColor = [1 1 1]; % white
                     obj.TypingCharacters(idx) = TypingCharacter;
-                    xPos = xPos + obj.CharWidth + 1;
+
+                    xPos = xPos + obj.CharWidth + obj.CharPadding;
                     idx = idx + 1;
                 end
                 xPos = obj.XMargin;
-                yPos = yPos - obj.CharHeight - 2;
+                yPos = yPos - obj.LineHeight - obj.LinePadding;
             end
         end
 
         function lines = LineBreak(obj, text, maxLineLength)
+            % Break text into lines of length < maxLineLength
             words = strsplit(text);
             lines = {};
             line = '';
@@ -184,51 +218,59 @@ classdef MatType < handle
         end
 
         function StartTyping(obj)
+            % Clear typing area and start countdown
             for character=obj.TypingCharacters
                 character.String = ' ';
             end
             obj.CursorIdx = 1;
             obj.AnnouncementPanel.Visible = 'off';
-            obj.TimeoutStart = tic();
-            start(obj.TimeoutTimer);
+            obj.CountdownStart = tic();
+            start(obj.CountdownTimer);
         end
 
         function StopTyping(obj)
-            stop(obj.TimeoutTimer);
-            obj.TimeoutPanel.String = obj.TimeoutString(0);
-            obj.DrawScore();
-            obj.TimeoutStart = -1;
+            % Stop countdown and show score
+            stop(obj.CountdownTimer);
+            wpm = obj.CalculateScore();
+            obj.CountdownStart = -1;
+            obj.AnnouncementPanel.String = sprintf('%3.2f WPM', wpm);
+            obj.AnnouncementPanel.Visible = 'on';
+            obj.CountdownPanel.String = obj.FormatCountdown(0);
         end
 
-        function DrawCursor(obj, handle, event)
+        function CursorCallback(obj, handle, event)
+            % Blink cursor (black on white or white on black)
             character = obj.TypingCharacters(obj.CursorIdx);
             if character.BackgroundColor == [1 1 1]
-                character.BackgroundColor = [0 0 0];
-                character.ForegroundColor = [1 1 1];
+                character.BackgroundColor = [0 0 0]; % black
+                character.ForegroundColor = [1 1 1]; % white
             else
-                character.BackgroundColor = [1 1 1];
-                character.ForegroundColor = [0 0 0];
+                character.BackgroundColor = [1 1 1]; % white
+                character.ForegroundColor = [0 0 0]; % black
             end
         end
 
-        function DrawTimeout(obj, handle, event)
-            remaining = obj.TimeoutLength - toc(obj.TimeoutStart);
+        function CountdownCallback(obj, handle, event)
+            % Update countdown text label
+            remaining = obj.CountdownLength - toc(obj.CountdownStart);
             if remaining < 0
                 obj.StopTyping();
             end
-            obj.TimeoutPanel.String = obj.TimeoutString(remaining);
+            obj.CountdownPanel.String = obj.FormatCountdown(remaining);
         end
 
-        function str = TimeoutString(obj, remaining)
-            if remaining < 0
-                remaining = 0;
+        function str = FormatCountdown(obj, remainingSeconds)
+            % Format remainingSeconds as countdown string
+            if remainingSeconds < 0
+                remainingSeconds = 0;
             end
-            minutes = floor(remaining / 60);
-            seconds = remaining - minutes*60;
+            minutes = floor(remainingSeconds / 60);
+            seconds = remainingSeconds - minutes*60;
             str = sprintf('%i:%04.1f s', minutes, seconds);
         end
 
-        function DrawScore(obj)
+        function wordsPerMinute = CalculateScore(obj)
+            % Calculate correctly typed words per minute
             templateString = '';
             for character=obj.TemplateCharacters
                 templateString = [templateString character.String];
@@ -253,16 +295,15 @@ classdef MatType < handle
                 correctWords = correctWords + 1;
             end
 
-            obj.AnnouncementPanel.String = ...
-                sprintf('%3.2f WPM', correctWords/(obj.TimeoutLength/60));
-            obj.AnnouncementPanel.Visible = 'on';
+            wordsPerMinute = correctWords/(obj.CountdownLength/60);
         end
 
         function DeleteTimers(obj, handle, event)
+            % Stop and delete all timers
             stop(obj.CursorTimer);
             delete(obj.CursorTimer);
-            stop(obj.TimeoutTimer);
-            delete(obj.TimeoutTimer);
+            stop(obj.CountdownTimer);
+            delete(obj.CountdownTimer);
         end
 
         function value = get.CursorIdx(obj)
@@ -270,9 +311,12 @@ classdef MatType < handle
         end
 
         function obj = set.CursorIdx(obj, newCursorIdx)
-            if newCursorIdx > length(obj.TypingCharacters)
+            if newCursorIdx > length(obj.TypingCharacters) || ...
+               newCursorIdx < 1
                 return
             end
+            % copy text style from old character to new character and
+            % vice versa:
             oldCharacter = obj.TypingCharacters(obj.TrueCursorIdx);
             newCharacter = obj.TypingCharacters(newCursorIdx);
             originalBackgroundColor = newCharacter.BackgroundColor;
@@ -281,10 +325,12 @@ classdef MatType < handle
             newCharacter.ForegroundColor = oldCharacter.ForegroundColor;
             oldCharacter.BackgroundColor = originalBackgroundColor;
             oldCharacter.ForegroundColor = originalForegroundColor;
+
             obj.TrueCursorIdx = newCursorIdx;
         end
 
         function text = DefaultText(obj)
+            % A default text (in German)
             text = 'Einst stritten sich Nordwind und Sonne, wer von ihnen beiden wohl der Stärkere wäre, als ein Wanderer, der in einen warmen Mantel gehüllt war, des Weges daherkam. Sie wurden einig, daß derjenige für den Stärkeren gelten sollte, der den Wanderer zwingen würde, seinen Mantel abzunehmen. Der Nordwind blies mit aller Macht, aber je mehr er blies, desto fester hüllte sich der Wanderer in seinen Mantel ein. Endlich gab der Nordwind den Kampf auf. Nun erwärmte die Sonne die Luft mit ihren freundlichen Strahlen, und schon nach wenigen Augenblicken zog der Wanderer seinen Mantel aus. Da mußte der Nordwind zugeben, daß die Sonne von ihnen beiden der Stärkere war.';
         end
     end
