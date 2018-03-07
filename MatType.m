@@ -13,8 +13,8 @@ classdef MatType < handle
         AnnouncementPanel
         TimeoutTimer
         TimeoutPanel
-        TimeoutStart
-        TimeoutLength = 10
+        TimeoutStart = 0
+        TimeoutLength = 60
     end
 
     properties (Dependent)
@@ -80,12 +80,12 @@ classdef MatType < handle
 
         function KeyPress(obj, handle, event)
             c = obj.Character2letter(event.Character);
+            if obj.TimeoutStart == -1
+                return
+            end
             if c && obj.CursorIdx < length(obj.TypingCharacters)
-                if strcmp(obj.AnnouncementPanel.Visible, 'on') && ...
-                   strcmp(obj.AnnouncementPanel.String, 'Start Typing')
-                    obj.AnnouncementPanel.Visible = 'off';
-                    obj.TimeoutStart = tic();
-                    start(obj.TimeoutTimer);
+                if obj.TimeoutStart == 0
+                    obj.StartTyping();
                 end
                 typingCharacter = obj.TypingCharacters(obj.CursorIdx);
                 typingCharacter.String = c;
@@ -183,6 +183,23 @@ classdef MatType < handle
             lines = [lines line];
         end
 
+        function StartTyping(obj)
+            for character=obj.TypingCharacters
+                character.String = ' ';
+            end
+            obj.CursorIdx = 1;
+            obj.AnnouncementPanel.Visible = 'off';
+            obj.TimeoutStart = tic();
+            start(obj.TimeoutTimer);
+        end
+
+        function StopTyping(obj)
+            stop(obj.TimeoutTimer);
+            obj.TimeoutPanel.String = obj.TimeoutString(0);
+            obj.DrawScore();
+            obj.TimeoutStart = -1;
+        end
+
         function DrawCursor(obj, handle, event)
             character = obj.TypingCharacters(obj.CursorIdx);
             if character.BackgroundColor == [1 1 1]
@@ -197,9 +214,7 @@ classdef MatType < handle
         function DrawTimeout(obj, handle, event)
             remaining = obj.TimeoutLength - toc(obj.TimeoutStart);
             if remaining < 0
-                stop(obj.TimeoutTimer);
-                obj.TimeoutPanel.String = obj.TimeoutString(0);
-                obj.DrawScore();
+                obj.StopTyping();
             end
             obj.TimeoutPanel.String = obj.TimeoutString(remaining);
         end
@@ -237,7 +252,6 @@ classdef MatType < handle
             if wordCorrect
                 correctWords = correctWords + 1;
             end
-            correctWords
 
             obj.AnnouncementPanel.String = ...
                 sprintf('%3.2f WPM', correctWords/(obj.TimeoutLength/60));
