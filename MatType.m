@@ -98,6 +98,7 @@ classdef MatType < handle
             obj.AnnouncementPanel.Position = ...
                 [figsize(1)/2-100 figsize(2)/4-25 200 50];
             obj.AnnouncementPanel.String = 'Start Typing';
+            obj.AnnouncementPanel.FontUnits = 'pixels';
             obj.AnnouncementPanel.FontSize = 36;
             obj.AnnouncementPanel.ForegroundColor = [1 0 0];
             obj.AnnouncementPanel.BackgroundColor = [1 1 1];
@@ -107,6 +108,7 @@ classdef MatType < handle
             obj.CountdownPanel.Position = ...
                 [figsize(1)/2-50 figsize(2)/2+5 100, 16];
             obj.CountdownPanel.String = obj.FormatCountdown(obj.CountdownLength);
+            obj.CountdownPanel.FontUnits = 'pixels';
             obj.CountdownPanel.FontSize = 14;
 
             % Set up countdown timer:
