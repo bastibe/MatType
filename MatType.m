@@ -59,12 +59,6 @@ classdef MatType < handle
         function obj = MatType(defaultText)
             % Set up GUI and timers
 
-            % Force Matlab to use UTF-8 if possible
-            if exist('slCharacterEncoding') && ...
-               ~strcmp(feature('DefaultCharacterSet'), 'UTF-8')
-                slCharacterEncoding('UTF8');
-            end
-
             % Set up window:
             obj.Figure = figure();
             obj.Figure.MenuBar = 'none';
@@ -155,26 +149,13 @@ classdef MatType < handle
 
         function letter = Character2letter(obj, c)
             % Fix German special characters (Matlab bug)
-            if isempty(c)
-                letter = false;
+            if isempty(c) || c < ' '
+                letter = false; % not a character
             elseif c >= ' ' && c <= '~'
                 letter = c;
-            elseif c == 65508
-                letter = 'ä';
-            elseif c == 65526
-                letter = 'ö';
-            elseif c == 65532
-                letter = 'ü';
-            elseif c == 65503
-                letter = 'ß';
-            elseif c == 65476
-                letter = 'Ä';
-            elseif c == 65494
-                letter = 'Ö';
-            elseif c == 65500
-                letter = 'Ü';
-            else
-                letter = false;
+            else % Matlab-Bug: Non-ASCII characters are broken
+                letter = char(typecast(uint16(c), 'uint8'));
+                letter = letter(1);
             end
         end
 
@@ -358,6 +339,7 @@ classdef MatType < handle
         function text = DefaultText(obj)
             % A default text (in German)
             text = 'Einst stritten sich Nordwind und Sonne, wer von ihnen beiden wohl der Stärkere wäre, als ein Wanderer, der in einen warmen Mantel gehüllt war, des Weges daherkam. Sie wurden einig, daß derjenige für den Stärkeren gelten sollte, der den Wanderer zwingen würde, seinen Mantel abzunehmen. Der Nordwind blies mit aller Macht, aber je mehr er blies, desto fester hüllte sich der Wanderer in seinen Mantel ein. Endlich gab der Nordwind den Kampf auf. Nun erwärmte die Sonne die Luft mit ihren freundlichen Strahlen, und schon nach wenigen Augenblicken zog der Wanderer seinen Mantel aus. Da mußte der Nordwind zugeben, daß die Sonne von ihnen beiden der Stärkere war.';
+            text = native2unicode(text, 'UTF-8');
         end
     end
 end
